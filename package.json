@@ -1,0 +1,21 @@
+{
+  "name": "mule-shield",
+  "version": "1.0.0",
+  "description": "Multi-Agent Financial Intelligence and Money Mule Ring Detection",
+  "main": "scripts/start.js",
+  "scripts": {
+    "start": "node scripts/start.js",
+    "setup": "node scripts/setup.js",
+    "test": "node --test"
+  },
+  "keywords": [
+    "fintech",
+    "aml",
+    "money-mule",
+    "louvain",
+    "multi-agent",
+    "graph-analytics"
+  ],
+  "author": "Mule Shield Team",
+  "license": "Apache-2.0"
+}

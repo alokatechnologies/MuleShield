@@ -10,7 +10,7 @@
     if (window.location.port === '3000' || window.location.port === '8000') {
       return '';
     }
-    return 'http://127.0.0.1:8000';
+    return 'https://muleshield-vivc.onrender.com';
   }
 
   document.addEventListener('DOMContentLoaded', () => {

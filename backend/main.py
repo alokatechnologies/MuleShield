@@ -12,6 +12,7 @@ import math
 import time
 import csv
 import io
+import socket
 import logging
 import hashlib
 import hmac
@@ -23,6 +24,9 @@ from datetime import datetime
 from collections import defaultdict, deque
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
+
+ThreadingHTTPServer.allow_reuse_address = True
+ThreadingHTTPServer.daemon_threads = True
 
 logger = logging.getLogger("mule_shield")
 
@@ -857,15 +861,18 @@ def get_session_user(handler):
 
 class MuleShieldHandler(BaseHTTPRequestHandler):
     def send_json(self, data, status=200):
-        body = json.dumps(data).encode("utf-8")
-        self.send_response(status)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
+        try:
+            body = json.dumps(data).encode("utf-8")
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError, OSError):
+            pass
 
     def do_OPTIONS(self):
         self.send_response(200)
@@ -1130,12 +1137,12 @@ class MuleShieldHandler(BaseHTTPRequestHandler):
                     }, status=400)
                     return
 
-                # Validate username length and characters
-                if len(username) < 3 or not re.match(r'^[a-zA-Z0-9_.-]+$', username):
+                # Validate username length and characters (permits alphanumeric, email-style usernames, dots, underscores, hyphens)
+                if len(username) < 3 or not re.match(r'^[a-zA-Z0-9_.@+-]+$', username):
                     self.send_json({
                         "status": "error",
                         "code": "INVALID_USERNAME",
-                        "message": "Username must be at least 3 characters and contain only letters, numbers, dots, hyphens, or underscores."
+                        "message": "Username must be at least 3 characters and contain valid identifier characters."
                     }, status=400)
                     return
 
@@ -1435,7 +1442,6 @@ class MuleShieldHandler(BaseHTTPRequestHandler):
             self.send_json({"status": "ok"})
 
 if __name__ == "__main__":
-    print(f"Starting Mule Shield Analytical Backend on http://{HOST}:{PORT}")
     if supabase_service:
         db_chk = supabase_service.check_connection()
         if db_chk.get("connected"):
@@ -1444,7 +1450,22 @@ if __name__ == "__main__":
             print(f"[Database Notice] Supabase configured but unreachable: {db_chk.get('message')}")
         else:
             print("[Database Notice] Supabase not configured in .env. Running in local analytical mode.")
-    server = ThreadingHTTPServer((HOST, PORT), MuleShieldHandler)
+
+    server = None
+    target_port = PORT
+    for candidate in [PORT, 8001, 8002, 8005]:
+        try:
+            server = ThreadingHTTPServer((HOST, candidate), MuleShieldHandler)
+            target_port = candidate
+            break
+        except OSError as e:
+            logger.warning(f"Port {candidate} unavailable: {e}. Trying next candidate...")
+
+    if not server:
+        server = ThreadingHTTPServer((HOST, 0), MuleShieldHandler)
+        target_port = server.server_address[1]
+
+    print(f"Starting Mule Shield Analytical Backend on http://{HOST}:{target_port}")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

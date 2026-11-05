@@ -6,6 +6,13 @@
 (function () {
   'use strict';
 
+  function getApiBase() {
+    if (window.location.port === '3000' || window.location.port === '8000') {
+      return '';
+    }
+    return 'http://127.0.0.1:8000';
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     checkExistingSession();
     checkRegistrationMessage();
@@ -41,7 +48,7 @@
     if (!token) return;
 
     try {
-      const res = await fetch('/api/auth/me', {
+      const res = await fetch(`${getApiBase()}/api/auth/me`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -104,7 +111,7 @@
       setLoading(true);
 
       try {
-        const res = await fetch('/api/auth/login', {
+        const res = await fetch(`${getApiBase()}/api/auth/login`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -235,7 +242,7 @@
       const email = identInput ? identInput.value.trim() : '';
 
       try {
-        await fetch('/api/auth/forgot-password', {
+        await fetch(`${getApiBase()}/api/auth/forgot-password`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: email })

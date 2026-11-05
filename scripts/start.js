@@ -5,7 +5,7 @@
  * Starts Python backend, verifies health, starts frontend server, and opens browser.
  */
 
-const { spawn, exec } = require('child_process');
+const { spawn, exec, execSync } = require('child_process');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -13,6 +13,13 @@ const path = require('path');
 const BACKEND_PORT = process.env.BACKEND_PORT || 8000;
 const FRONTEND_PORT = process.env.FRONTEND_PORT || 3000;
 const ROOT_DIR = path.resolve(__dirname, '..');
+
+// Ensure no stale processes occupy BACKEND_PORT
+if (process.platform === 'win32') {
+  try {
+    execSync(`powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort ${BACKEND_PORT} -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }"`, { stdio: 'ignore' });
+  } catch (_) {}
+}
 
 console.log('====================================================');
 console.log('           🛡️  MULE SHIELD SYSTEM LAUNCHER           ');
@@ -171,7 +178,13 @@ function cleanup() {
   console.log('\nShutting down MULE SHIELD services...');
   server.close();
   try {
-    backendProcess.kill('SIGINT');
+    if (backendProcess && backendProcess.pid) {
+      if (process.platform === 'win32') {
+        execSync(`taskkill /pid ${backendProcess.pid} /t /f`, { stdio: 'ignore' });
+      } else {
+        backendProcess.kill('SIGINT');
+      }
+    }
   } catch (e) {}
   process.exit(0);
 }

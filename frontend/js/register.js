@@ -7,6 +7,13 @@
 (function () {
   'use strict';
 
+  function getApiBase() {
+    if (window.location.port === '3000' || window.location.port === '8000') {
+      return '';
+    }
+    return 'http://127.0.0.1:8000';
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
     initRegisterForm();
     initPasswordToggles();
@@ -86,7 +93,7 @@
       setLoading(true);
 
       try {
-        const res = await fetch('/api/auth/register', {
+        const res = await fetch(`${getApiBase()}/api/auth/register`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -109,7 +116,7 @@
           }, 500);
         } else {
           setLoading(false);
-          const errorMsg = data.message || 'Unable to create account. Please check your details and try again.';
+          const errorMsg = data.message || data.error || data.detail || 'Unable to create account. Please check your details and try again.';
           showAlert(errorMsg, 'error');
         }
       } catch (err) {

@@ -99,7 +99,7 @@
     } catch (_) {}
 
     try {
-      const res = await fetch('/api/auth/me', {
+      const res = await fetch(`${getApiBase()}/api/auth/me`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -146,7 +146,7 @@
       const token = localStorage.getItem('mule_shield_token') || sessionStorage.getItem('mule_shield_token');
       try {
         if (token) {
-          await fetch('/api/auth/logout', {
+          await fetch(`${getApiBase()}/api/auth/logout`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
           });
